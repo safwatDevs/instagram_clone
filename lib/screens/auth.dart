@@ -8,8 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:instagram_clone/screens/priv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-const primaryColor = Color.fromRGBO(183, 0, 255, 1);
+const primaryColor = Color.fromRGBO(109, 1, 151, 1);
 const buttonColor = Color.fromRGBO(109, 1, 151, 1);
 const textColor = Color.fromRGBO(21, 21, 21, 1);
 const bgColor = Color.fromRGBO(213, 189, 255, 1);
@@ -28,67 +29,75 @@ class _AuthScreenState extends State<AuthScreen> {
   var enteredEmail;
   var enteredPassword;
   final _key = GlobalKey<FormState>();
-  var _image;
-  final _auth = FirebaseAuth.instance;
+  File? _image;
+  final supabase = Supabase.instance.client;
   var isLoading = false;
+  XFile? image;
+  String? imageUrl;
+  bool checkBoxValue = false;
+
+  void getImage() async {
+    image = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _image = File(image!.path);
+      });
+    }
+    return;
+  }
 
   Future<void> submitForm() async {
-    if (!_key.currentState!.validate()) {
+    if (!_key.currentState!.validate() && checkBoxValue == false) {
       return;
     }
     _key.currentState!.save();
     setState(() {
       isLoading = true;
     });
+
+    String? uploadedImageUrl;
+
+    if (image != null) {
+      final imageExtension = image!.path.split('.').last.toLowerCase();
+      final imageBytes = await image!.readAsBytes();
+      final imagePath =
+          '$enteredUsername-${DateTime.now().toIso8601String()}/avatar.$imageExtension';
+
+      await supabase.storage.from('avatars').uploadBinary(imagePath, imageBytes,
+          fileOptions: FileOptions(contentType: 'image/$imageExtension'));
+
+      uploadedImageUrl =
+          supabase.storage.from('avatars').getPublicUrl(imagePath);
+    }
+
     try {
       if (!isLogin) {
-        final userCredentials = await _auth.createUserWithEmailAndPassword(
+        // Sign Up
+        final response = await supabase.auth.signUp(
           email: enteredEmail,
           password: enteredPassword,
         );
 
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCredentials.user!.uid)
-            .set({
-          'username': enteredUsername,
-          'email': enteredEmail,
-          // 'img_url': _image
-        });
+        if (response.user != null) {
+          await supabase.from('profiles').insert({
+            'username': enteredUsername,
+            'email': enteredEmail,
+            'avatar_url': uploadedImageUrl ?? '',
+          });
+        }
       } else {
-        await _auth.signInWithEmailAndPassword(
-            email: enteredEmail, password: enteredPassword);
+        //Sign In
+        await supabase.auth
+            .signInWithPassword(email: enteredEmail, password: enteredPassword);
       }
-    } on FirebaseAuthException catch (error) {
-      String message = 'Authentication failed';
-
-      if (error.code == 'email-already-in-use') {
-        message = 'This email is already registered';
-      } else if (error.code == 'invalid-email') {
-        message = 'Invalid email address';
-      } else if (error.code == 'weak-password') {
-        message = 'Password is too weak';
-      } else if (error.code == 'user-not-found') {
-        message = 'User not found';
-      } else if (error.code == 'wrong-password') {
-        message = 'Incorrect password';
-      }
-
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error: ${error.toString()}'),
+      ));
+      print('Error: ${error.toString()}');
     } finally {
       setState(() {
         isLoading = false;
-      });
-    }
-  }
-
-  void getImage() async {
-    var image = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        _image = image.path;
       });
     }
   }
@@ -147,7 +156,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                     ? ClipRRect(
                                         borderRadius: BorderRadius.circular(50),
                                         child: Image.file(
-                                          File(_image),
+                                          _image!,
                                           width: 100,
                                           height: 76,
                                         ))
@@ -264,7 +273,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                 children: [
                                   Checkbox(
                                     value: false,
-                                    onChanged: (checked) {},
+                                    onChanged: (checked) {
+                                      checkBoxValue = !checkBoxValue;
+                                    },
                                     activeColor: primaryColor,
                                   ),
                                   InkWell(

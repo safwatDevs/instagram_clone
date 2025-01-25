@@ -6,6 +6,7 @@ import 'package:instagram_clone/screens/add_post.dart';
 import 'package:instagram_clone/screens/auth.dart';
 import 'package:instagram_clone/screens/feed.dart';
 import 'package:instagram_clone/screens/profile.dart';
+import 'package:keyboard_avoider/keyboard_avoider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,98 +16,112 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final bottomHighlight = Color.fromARGB(255, 238, 191, 255);
+  bool isHomeActive = true;
+  bool isProfileActive = false;
   int bottomBarIndex = 0;
-  final _pages = [FeedScreen(), AddPostScreen(), ProfileScreen()];
+
   @override
   Widget build(BuildContext context) {
+    final _page = isHomeActive ? FeedScreen() : ProfileScreen();
     return Scaffold(
+      backgroundColor: litePrimaryColor,
+      resizeToAvoidBottomInset: false,
+      appBar: AppBar(
+        backgroundColor: litePrimaryColor,
+        surfaceTintColor: litePrimaryColor,
+        shadowColor: buttonColor,
+        title: Text(
+          'SafwatGram',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.pacifico(
+              textStyle: TextStyle(color: buttonColor, fontSize: 24)),
+        ),
+      ),
       body: Column(
         children: [
-          SizedBox(height: 35),
-          SizedBox(
-            height: 70,
-            child: Center(
-              child: Align(
-                alignment: Alignment.center,
-                child: Text(
-                  'SafwatGram',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.pacifico(
-                      textStyle: TextStyle(color: buttonColor, fontSize: 24)),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Stack(children: [
-              _pages[bottomBarIndex],
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  margin:
-                      const EdgeInsets.only(right: 50, left: 50, bottom: 30),
-                  decoration:
-                      BoxDecoration(borderRadius: BorderRadius.circular(20)),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: NavigationBar(
-                      height: 30,
-                      animationDuration: const Duration(milliseconds: 500),
-                      labelBehavior:
-                          NavigationDestinationLabelBehavior.alwaysHide,
-                      backgroundColor: litePrimaryColor,
-                      destinations: const [
-                        NavigationDestination(
-                          icon: Icon(
-                            Icons.home_outlined,
-                            color: buttonColor,
-                          ),
-                          selectedIcon: Icon(
-                            Icons.home,
-                            color: buttonColor,
-                          ),
-                          label: '',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(Icons.add_circle_outline_outlined,
-                              color: buttonColor),
-                          selectedIcon: Icon(
-                            Icons.add_circle,
-                            color: buttonColor,
-                          ),
-                          label: '',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(
-                            Icons.person_outline,
-                            color: buttonColor,
-                          ),
-                          label: '',
-                          selectedIcon: Icon(
-                            Icons.person,
-                            color: buttonColor,
-                          ),
-                        )
-                      ],
-                      onDestinationSelected: (index) {
-                        setState(() {
-                          bottomBarIndex = index;
-                        });
-                      },
-                      selectedIndex: bottomBarIndex,
-                      indicatorColor: primaryColor.withOpacity(0.15),
-                      indicatorShape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side:
-                              BorderSide(width: 8, color: Colors.transparent)),
+          Expanded(child: _page),
+          Container(
+            margin: EdgeInsets.only(bottom: 25, right: 50, left: 50),
+            decoration: BoxDecoration(
+                color: litePrimaryColor,
+                borderRadius: BorderRadius.circular(15)),
+            padding: EdgeInsets.symmetric(vertical: 20, horizontal: 30),
+            child: Row(
+              children: [
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      isHomeActive = true;
+                      isProfileActive = false;
+                    });
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 15, vertical: 2),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color:
+                          isHomeActive ? bottomHighlight : Colors.transparent,
+                    ),
+                    child: Icon(
+                      isHomeActive ? Icons.home : Icons.home_outlined,
+                      color: buttonColor,
+                      size: 32,
                     ),
                   ),
                 ),
-              ),
-            ]),
-          ),
+                Spacer(),
+                InkWell(
+                  onTap: () {
+                    showModalBottomSheet(
+                        isDismissible: false,
+                        context: context,
+                        builder: (context) =>
+                            KeyboardAvoider(child: AddPostScreen()),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                        useSafeArea: true,
+                        isScrollControlled: true);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 15, vertical: 2),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.transparent,
+                    ),
+                    child: Icon(
+                      Icons.add_circle_outline,
+                      color: buttonColor,
+                      size: 32,
+                    ),
+                  ),
+                ),
+                Spacer(),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      isProfileActive = true;
+                      isHomeActive = false;
+                    });
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 15, vertical: 2),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: isProfileActive
+                          ? bottomHighlight
+                          : Colors.transparent,
+                    ),
+                    child: Icon(
+                      isProfileActive ? Icons.person : Icons.person_outline,
+                      color: buttonColor,
+                      size: 32,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
         ],
       ),
     );
